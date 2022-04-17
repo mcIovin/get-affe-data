@@ -13,4 +13,5 @@ COPY src/* /app/src/
 
 ENV PYTHONPATH "${PYTHONPATH}:/app/crypto_apis"
 
-CMD [ "tail", "-f", "/dev/null"]
+WORKDIR /app/src
+CMD [ "python", "get_affe_data.py"]

@@ -2,3 +2,4 @@
 __pycache__/
 external_code
 test.py
+*.env

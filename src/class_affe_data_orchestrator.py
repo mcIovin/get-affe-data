@@ -38,6 +38,7 @@ class AffeDataOrchestrator:
 
         df = self.get_eoa_nft_transfers_from_moralis(do_some_refining=True)
 
+        print(df)
     # ------------------------ END FUNCTION ------------------------ #
 
     def get_eoa_nft_transfers_from_moralis(self, do_some_refining: bool = False) -> pd.DataFrame:

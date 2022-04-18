@@ -123,7 +123,7 @@ class AffeDataOrchestrator:
         moralis = MoralisAPIinteractions()
         moralis.resync_many_nft_tokens_metadata(self.affe_contract_address,
                                                 iterable_with_token_ids,
-                                                print_api_response_to_console=True,
+                                                log_api_response=True,
                                                 sleep_time_between_requests=1)
     # ------------------------ END FUNCTION ------------------------ #
 

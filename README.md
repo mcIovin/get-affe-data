@@ -38,9 +38,13 @@ HOW TO EXECUTE THE CODE AND GET AFFE DATA
 3) Make the bash scripts executable by typing:
 
 chmod +x bash_*
+
+
 4) Build the docker image by typing:
 
 ./bash_script_1_docker_build.sh
+
+
 5) Run the docker image by typing:
 
 bash_script_2_docker_run.sh

@@ -45,3 +45,8 @@ chmod +x bash_*
 
 bash_script_2_docker_run.sh
 
+**RESULTS**
+
+Results will be placed in the data/ directory.
+Any files used for intermediate steps will be in data/intermediate_files/ and
+the file withe the fully compiled results will be in data/output/

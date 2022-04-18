@@ -60,9 +60,9 @@ class AffeDataOrchestrator:
         logging.info("---------- REFINING NFT METADATA ----------")
         df_refined_nfts = self.refine_nft_data(df_nfts)
         logging.info("---------- GETTING ADDITIONAL NFT METADATA FROM OPENSEA ----------")
-        self.get_extra_metadata_from_opensea(df_refined_nfts)
+        df_extras = self.get_extra_metadata_from_opensea(df_refined_nfts)
 
-        print(df_nfts)
+        print(df_extras)
     # ------------------------ END FUNCTION ------------------------ #
 
     def get_eoa_nft_transfers_from_moralis(self, do_some_refining: bool = False) -> pd.DataFrame:
@@ -201,6 +201,6 @@ class AffeDataOrchestrator:
         df_extra_data = opensea.get_many_nfts_properties(self.affe_contract_address, set_token_ids)
         opensea.close_driver()
 
-        df_extra_data.to_csv(self.fullpath_nfts_extra_data)
+        df_extra_data.to_csv(self.fullpath_nfts_extra_data, index=False)
         return df_extra_data
     # ------------------------ END FUNCTION ------------------------ #

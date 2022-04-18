@@ -43,16 +43,17 @@ RUN chmod +x geckodriver
 ENV PATH "$PATH:/app/drivers/"
 
 # Grab the contents of another github repo, which has useful python code
-# for querying crypto related APIs and copy it into the container so it can be used by the
+# for querying crypto related APIs and copy it into the image so it can be used by the
 # code in this repo.
 WORKDIR /app
 RUN mkdir crypto_apis
 RUN git clone https://github.com/mcIovin/crypto-related-python-apis.git crypto_apis/
 ENV PYTHONPATH "${PYTHONPATH}:/app/crypto_apis/"
 
-# copy repo code into container
+# create a src directory in the image. When a container is run based on this
+# images the local 'src' directory in the host should be mounted to this
+# directory in the container.
 RUN mkdir src
-COPY src/* /app/src/
 
 # use a script to execute a container
 COPY entrypoint_commands.sh /app/entrypoint_commands.sh

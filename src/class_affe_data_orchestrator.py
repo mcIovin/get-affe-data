@@ -24,7 +24,9 @@ class AffeDataOrchestrator:
         self.fullpath_nfts_data = self.fullpath_intermediate_files / 'nfts.csv'
         self.fullpath_nfts_refined_data = self.fullpath_intermediate_files / 'nfts_refined.csv'
         self.fullpath_nfts_extra_data = self.fullpath_intermediate_files / 'nfts_extra_data.csv'
+        self.fullpath_combined_nft_data = self.fullpath_intermediate_files / 'combined_data.csv'
         self.fullpath_output = full_path_to_data_dir / 'output'
+        self.fullpath_final = self.fullpath_output / 'affe.csv'
         # This class will store some files on disk in two directories called
         # 'intermediate_files' and 'output', so we'll check to see if they exist,
         # and if not they will be created.
@@ -57,12 +59,28 @@ class AffeDataOrchestrator:
 
         logging.info("---------- GETTING NFT METADATA FROM TOKEN URIs ----------")
         df_nfts = self.get_nft_metadata_from_moralis(df_transfers)
+
         logging.info("---------- REFINING NFT METADATA ----------")
         df_refined_nfts = self.refine_nft_data(df_nfts)
+
         logging.info("---------- GETTING ADDITIONAL NFT METADATA FROM OPENSEA ----------")
         df_extras = self.get_extra_metadata_from_opensea(df_refined_nfts)
 
-        print(df_extras)
+        logging.info("---------- COMBINING METADATA ----------")
+        df_combined = self.combine_data([df_extras, df_refined_nfts])
+
+        logging.info("---------- REORDERING METADATA ----------")
+        list_ordered_columns = ['name', 'CHIMP', 'AK47', 'Anger', 'Anticipation', 'Disgust',
+                                'Fear', 'Joy', 'Negative', 'Positive', 'Sadness', 'Surprise',
+                                'Trust', 'description', 'SPECIAL ABILITY', 'TRINKET',
+                                'FIREWORKS', 'HAT', 'FLOWER', 'SUNGLASSES',
+                                'PET', 'MONOCLE', 'APEBALL', 'PIPE', 'JEWELLERY', 'CIGAR',
+                                'SEASON', 'BOWTIE', 'SPECIAL ATTRIBUTE', 'DRINK', 'PANTS',
+                                'FLAG', 'Damage', 'Parry', 'Speed']
+        df_final = self.reorganize_the_data(list_ordered_columns, df_combined)
+
+        logging.info("---------- AFFE DATA ----------")
+        self.show_data_on_console(df_final)
     # ------------------------ END FUNCTION ------------------------ #
 
     def get_eoa_nft_transfers_from_moralis(self, do_some_refining: bool = False) -> pd.DataFrame:
@@ -203,4 +221,85 @@ class AffeDataOrchestrator:
 
         df_extra_data.to_csv(self.fullpath_nfts_extra_data, index=False)
         return df_extra_data
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def combine_data(self,
+                     list_of_dataframes_with_data_to_combine: list[pd.DataFrame] = []) -> pd.DataFrame:
+        """
+        This method combines several dataframes that contain relevant data about the NFTs. The
+        dataframes are assumed to all contain a column called 'token_id' that can be used for
+        the merge.
+        :param list_of_dataframes_with_data_to_combine: A list containing the dataframes with NFT data.
+        :return: A pandas dataframe with the combined information of all the dataframes that were
+          joined based on 'token_id'.
+        """
+        df_refined = pd.DataFrame
+        df_extras = pd.DataFrame
+        # If no list was passed, this method will attempt to grab data from the refined NFT data
+        # and the extra opensea data on disk.
+        if not list_of_dataframes_with_data_to_combine:
+            df_refined = pd.read_csv(self.fullpath_nfts_refined_data)
+            df_extras = pd.read_csv(self.fullpath_nfts_extra_data)
+            list_of_dataframes_with_data_to_combine = [df_extras, df_refined]
+
+        counter = 0
+        df_combined = list_of_dataframes_with_data_to_combine[counter]
+        df_combined.set_index('token_id', inplace=True)
+        num_dfs_to_combine_with = len(list_of_dataframes_with_data_to_combine) - 1
+        while counter < num_dfs_to_combine_with:
+            counter += 1
+            df_to_combine_with = list_of_dataframes_with_data_to_combine[counter]
+            df_to_combine_with.set_index('token_id', inplace=True)
+            df_combined = df_combined.merge(df_to_combine_with, how='outer', left_index=True, right_index=True)
+
+        df_combined.reset_index(inplace=True)
+        df_combined.to_csv(self.fullpath_combined_nft_data, index=False)
+        return df_combined
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def reorganize_the_data(self,
+                            list_with_ordered_column_names: list,
+                            df_with_combined_data: pd.DataFrame = pd.DataFrame) -> pd.DataFrame:
+        """
+        This method receives a dataframe that has info in it about NFTs, and does a bit of
+        clean-up, such as reorganizing the columns.
+        :param list_with_ordered_column_names: An ordered list containing the column names of the columns that
+          should appear first in the re-ordered dataframe.
+        :param df_with_combined_data: The information about NFTs can be passed
+          directly to this method in this parameter. If this parameter is not provided, this
+          method will attempt to laod the information from a default location on disk containing
+          refined nft data.
+        :return: A pandas dataframe with the data somewhat reorganized.
+        """
+        df = df_with_combined_data
+        if df_with_combined_data.empty:
+            df = pd.read_csv(self.fullpath_combined_nft_data)
+
+        counter = 0
+        for col_name in list_with_ordered_column_names:
+            col = df[col_name]
+            df.drop(columns=[col_name], inplace=True)
+            df.insert(loc=counter, column=col_name, value=col)
+            counter += 1
+
+        df.to_csv(self.fullpath_final, index=False)
+        return df
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def show_data_on_console(self, df_with_final_data: pd.DataFrame = pd.DataFrame) -> pd.DataFrame:
+        """
+        This method receives a dataframe that has info in it about NFTs, prints the dataframe to the console.
+        :param df_with_final_data: The information about NFTs can be passed
+          directly to this method in this parameter. If this parameter is not provided, this
+          method will attempt to laod the information from a default location on disk containing
+          refined nft data.
+        :return: A pandas dataframe with the data somewhat reorganized.
+        """
+        df = df_with_final_data
+        if df_with_final_data.empty:
+            df = pd.read_csv(self.fullpath_final)
+
+        pd.set_option("display.max_columns", None)
+        pd.set_option("display.max_rows", None)
+        print(df.head())
     # ------------------------ END FUNCTION ------------------------ #

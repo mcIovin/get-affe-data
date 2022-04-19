@@ -79,8 +79,10 @@ class AffeDataOrchestrator:
                                 'FLAG', 'Damage', 'Parry', 'Speed']
         df_final = self.reorganize_the_data(list_ordered_columns, df_combined)
 
-        logging.info("---------- AFFE DATA ----------")
+        logging.info("---------- AFFE DATA PREVIEW ----------")
         self.show_data_on_console(df_final)
+
+        logging.info("FOR THE FULL SET OF DATA see the affe.csv file saved to data/output directory.")
     # ------------------------ END FUNCTION ------------------------ #
 
     def get_eoa_nft_transfers_from_moralis(self, do_some_refining: bool = False) -> pd.DataFrame:
@@ -300,6 +302,8 @@ class AffeDataOrchestrator:
             df = pd.read_csv(self.fullpath_final)
 
         pd.set_option("display.max_columns", None)
-        pd.set_option("display.max_rows", None)
-        print(df.head())
+        pd.set_option("display.max_colwidth", 25)
+        pd.set_option("display.width", 1000)
+        pd.set_option("display.max_rows", 250)
+        print((df.iloc[:, : 14]).head(250))
     # ------------------------ END FUNCTION ------------------------ #

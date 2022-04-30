@@ -7,12 +7,12 @@ from class_api_interactions_moralis import MoralisAPIinteractions
 from class_selenium_opensea import SeleniumOnOpensea
 
 
-class AffeDataOrchestrator:
+class AffeDataGetter:
     """This class orchestrates the extraction of Affe data ."""
 
     def __init__(self, contract_address_with_affe_data, full_path_to_data_dir: Path):
         """
-        Initialize the AffeDataOrchestrator class.
+        Initialize the AffeDataGetter class.
         Args:
             full_path_to_data_dir: Path to a directory where this class will output
               intermediate working files, and final output files to. The directory
@@ -30,11 +30,6 @@ class AffeDataOrchestrator:
             mkdir(self.fullpath_dir_intermediate_files)
         if not exists(self.fullpath_dir_output):
             mkdir(self.fullpath_dir_output)
-        # Also, individual json files for each Affe will be stored in a sub-directory of
-        # the output directory.
-        self.fullpath_dir_output_json = self.fullpath_dir_output / 'json'
-        if not exists(self.fullpath_dir_output_json):
-            mkdir(self.fullpath_dir_output_json)
 
         # Intermediate files
         self.fullpath_eoa_nft_transfers = self.fullpath_dir_intermediate_files / 'xlii_transactions.csv'
@@ -89,8 +84,6 @@ class AffeDataOrchestrator:
                                 'SEASON', 'BOWTIE', 'SPECIAL ATTRIBUTE', 'DRINK', 'PANTS',
                                 'FLAG', 'Damage', 'Parry', 'Speed']
         df_final = self.reorganize_the_data(list_ordered_columns, df_combined)
-
-        logging.info("---------- SAVING INDIVIDUAL JSON FILES TO DISK ----------")
 
         logging.info("---------- AFFE DATA PREVIEW ----------")
         self.show_data_on_console(df_final)

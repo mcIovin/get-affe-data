@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from os import getenv
 from class_affe_data_getter import AffeDataGetter
@@ -11,6 +12,7 @@ setup_logging(destination='both',
 
 
 if __name__ == "__main__":
+    logging.info(" -------------------- STARTING MAIN PROGRAM -------------------- ")
     # Affe are in Opensea storefront at the following address
     opensea_storefront = "0x495f947276749ce646f68ac8c248420045cb7b5e"
     full_path_data_dir = Path(getenv('DATA_PATH'))

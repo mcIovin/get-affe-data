@@ -17,6 +17,6 @@ if __name__ == "__main__":
     opensea_storefront = "0x495f947276749ce646f68ac8c248420045cb7b5e"
     full_path_data_dir = Path(getenv('DATA_PATH'))
     affe_getter = AffeDataGetter(opensea_storefront, full_path_data_dir)
-    #affe_getter.build_affen_data_files(request_moralis_metadata_resync=False)
+    affe_getter.build_affen_data_files(request_moralis_metadata_resync=False)
     affe_manip = AffeDataManipulator(affe_getter.load_previously_fetched_data(), full_path_data_dir)
     affe_manip.dump_all_to_json()

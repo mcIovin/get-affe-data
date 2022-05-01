@@ -1,6 +1,7 @@
 from pathlib import Path
 from os import getenv
 from class_affe_data_getter import AffeDataGetter
+from class_affe_data_manipulator import AffeDataManipulator
 from helper_functions import setup_logging
 
 setup_logging()
@@ -11,3 +12,5 @@ if __name__ == "__main__":
     opensea_storefront = "0x495f947276749ce646f68ac8c248420045cb7b5e"
     affe_getter = AffeDataGetter(opensea_storefront, Path(getenv('DATA_PATH')))
     #affe_orch.build_affen_data_files(request_moralis_metadata_resync=False)
+    affe_manip = AffeDataManipulator(affe_getter.load_previously_fetched_data())
+    affe_manip.dump_all_to_nftstyled_json()

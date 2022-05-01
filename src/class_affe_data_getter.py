@@ -313,3 +313,15 @@ class AffeDataGetter:
         pd.set_option("display.max_rows", 250)
         print((df.iloc[:, : 14]).head(250))
     # ------------------------ END FUNCTION ------------------------ #
+
+    def load_previously_fetched_data(self) -> pd.DataFrame:
+        """
+        This method attempts to load from disk a set of 'finalized' (retrieved, filtered, cleaned, etc.)
+        Affen data..
+        :return: A pandas dataframe with the data somewhat reorganized.
+        """
+        df = pd.DataFrame
+        if  exists(self.fullpath_final):
+            df = pd.read_csv(self.fullpath_final)
+        return df
+    # ------------------------ END FUNCTION ------------------------ #

@@ -14,16 +14,23 @@ class Affe:
         """
 
         self.id = id
-        self.name = ""
+        self.name_strict = ""
+        self.name_friendly = ""
+        self.name_strict = ""
         self.story = ""
         self.image_url = ""
-        self.attributes = ""
-        self.emotions = ""
-
+        self.attributes = []
+        self.emotions = []
+        self.attributes_other_textual = []
+        self.attributes_other_numerical = []
     # ------------------------ END FUNCTION ------------------------ #
 
-    def set_name(self, name: str):
-        self.name = name
+    def set_name_strict(self, name_with_number: str):
+        self.name_strict = name_with_number
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def set_name_friendly(self, nice_name: str):
+        self.name_friendly = nice_name
     # ------------------------ END FUNCTION ------------------------ #
 
     def set_story(self, story: str):
@@ -32,4 +39,8 @@ class Affe:
 
     def set_image(self, image_location: str):
         self.image_url = image_location
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def dump_to_nftstyle_json(self, full_path: Path):
+        pass
     # ------------------------ END FUNCTION ------------------------ #

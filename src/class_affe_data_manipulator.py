@@ -53,7 +53,6 @@ class AffeDataManipulator:
           the metadata standards of Opensea.
         :return:
         """
-
         list_with_all_affen_normal = []
         list_with_all_affen_opensea_style = []
         fullpath_dir_normal_json = Path
@@ -74,26 +73,34 @@ class AffeDataManipulator:
                 if not exists(fullpath_dir_opensea_json):
                     mkdir(fullpath_dir_opensea_json)
                 affe.dump_to_opensea_style_json(fullpath_dir_opensea_json, pretty)
-                # --------------------ADD HERE SIMILAR LINE TO ABOVE TO APPEND TO A LIST OF OPENSEA STYLE AFFEN
+                # --------------------ADD HERE SIMILAR LINEs TO ABOVE TO APPEND TO A LIST OF OPENSEA STYLE AFFEN
 
 
-
-        if opensea_style_json:
+        if normal_json:
             # Dump the whole list to a single file as well
-
-            # NOTE
-            # NOTE
-            # NOTE
-            # NOTE
-            # NEED TO CREATE METHODS in the affe class that converts an Affe to a dict
-            # then you populate the list with these dicts, instead of with the Affe objects in the loop above.
-
-            full_path_to_collection_file = fullpath_dir_opensea_json / '00_all_affen.json'
+            full_path_to_collection_file = fullpath_dir_normal_json / '00_all_affen.json'
             kwargs = {}
             if pretty:
                 kwargs = {'indent': 2}
             with open(full_path_to_collection_file, mode='w') as f:
                 json.dump(list_with_all_affen_normal, f, indent=2)
+
+        # if opensea_style_json:
+        #     # Dump the whole list to a single file as well
+        #
+        #     # NOTE
+        #     # NOTE
+        #     # NOTE
+        #     # NOTE
+        #     # NEED TO CREATE METHODS in the affe class that converts an Affe to a dict
+        #     # then you populate the list with these dicts, instead of with the Affe objects in the loop above.
+        #
+        #     full_path_to_collection_file = fullpath_dir_opensea_json / '00_all_affen.json'
+        #     kwargs = {}
+        #     if pretty:
+        #         kwargs = {'indent': 2}
+        #     with open(full_path_to_collection_file, mode='w') as f:
+        #         json.dump(list_with_all_affen_opensea_style, f, indent=2)
 
     # ------------------------ END FUNCTION ------------------------ #
 

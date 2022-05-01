@@ -6,6 +6,7 @@ import json
 from class_affe import Affe
 from pathlib import Path
 from math import isnan
+from typing import Union
 
 
 class AffeDataManipulator:
@@ -57,51 +58,37 @@ class AffeDataManipulator:
         list_with_all_affen_opensea_style = []
         fullpath_dir_normal_json = Path
         fullpath_dir_opensea_json = Path
+        kwargs = ({'indent': 2} if pretty else {})
 
-        for row in self.df_affen.itertuples():
-            affe = self.__convert_df_row_to_affe_object(row)
-
-            if normal_json:
+        if normal_json:
+            for row in self.df_affen.itertuples():
+                affe = self.__convert_df_row_to_affe_object(row)
                 fullpath_dir_normal_json = self.fullpath_dir_output / 'normal_json'
                 if not exists(fullpath_dir_normal_json):
                     mkdir(fullpath_dir_normal_json)
-                the_ape_as_dict = affe.dump_to_json(fullpath_dir_normal_json, pretty)
+                # In the line below, the method dumps the json to disk, but also returns the dictionary
+                # that was used to generate the json, which we then append to the running tally of Affen
+                the_ape_as_dict = affe.dump_to_json(fullpath_dir_normal_json, 'normal', pretty)
                 list_with_all_affen_normal.append(the_ape_as_dict)
-
-            if opensea_style_json:
-                fullpath_dir_opensea_json = self.fullpath_dir_output / 'opensea_style_json'
-                if not exists(fullpath_dir_opensea_json):
-                    mkdir(fullpath_dir_opensea_json)
-                affe.dump_to_opensea_style_json(fullpath_dir_opensea_json, pretty)
-                # --------------------ADD HERE SIMILAR LINEs TO ABOVE TO APPEND TO A LIST OF OPENSEA STYLE AFFEN
-
-
-        if normal_json:
             # Dump the whole list to a single file as well
             full_path_to_collection_file = fullpath_dir_normal_json / '00_all_affen.json'
-            kwargs = {}
-            if pretty:
-                kwargs = {'indent': 2}
             with open(full_path_to_collection_file, mode='w') as f:
                 json.dump(list_with_all_affen_normal, f, indent=2)
 
-        # if opensea_style_json:
-        #     # Dump the whole list to a single file as well
-        #
-        #     # NOTE
-        #     # NOTE
-        #     # NOTE
-        #     # NOTE
-        #     # NEED TO CREATE METHODS in the affe class that converts an Affe to a dict
-        #     # then you populate the list with these dicts, instead of with the Affe objects in the loop above.
-        #
-        #     full_path_to_collection_file = fullpath_dir_opensea_json / '00_all_affen.json'
-        #     kwargs = {}
-        #     if pretty:
-        #         kwargs = {'indent': 2}
-        #     with open(full_path_to_collection_file, mode='w') as f:
-        #         json.dump(list_with_all_affen_opensea_style, f, indent=2)
-
+        if opensea_style_json:
+            for row in self.df_affen.itertuples():
+                affe = self.__convert_df_row_to_affe_object(row)
+                fullpath_dir_opensea_json = self.fullpath_dir_output / 'opensea_style_json'
+                if not exists(fullpath_dir_opensea_json):
+                    mkdir(fullpath_dir_opensea_json)
+                # In the line below, the method dumps the json to disk, but also returns the dictionary
+                # that was used to generate the json, which we then append to the running tally of Affen
+                the_ape_as_dict = affe.dump_to_json(fullpath_dir_opensea_json, 'nft-style', pretty)
+                list_with_all_affen_opensea_style.append(the_ape_as_dict)
+            # Dump the whole list to a single file as well
+            full_path_to_collection_file = fullpath_dir_opensea_json / '00_all_affen_nft_style.json'
+            with open(full_path_to_collection_file, mode='w') as f:
+                json.dump(list_with_all_affen_opensea_style, f, indent=2)
     # ------------------------ END FUNCTION ------------------------ #
 
     def __convert_df_row_to_affe_object(self, df_rowtuple):
@@ -117,10 +104,17 @@ class AffeDataManipulator:
 
         affe = Affe(id)
         affe.set_name_strict(strict_name)
-        affe.set_name_friendly(fields[self.__rowtuple_loc('CHIMP')])
-        affe.set_story(fields[self.__rowtuple_loc('description')])
-        affe.set_image(fields[self.__rowtuple_loc('image')])
-        affe.set_website(fields[self.__rowtuple_loc('external_link')])
+        # There is a lot going on in each line below, so lets break it down.
+        # The __rowtuple_loc method returns the column number in which to look for the relevant value
+        # That integer is then passed as the index for the 'fields' list (although I don't think the
+        # object is striclty a list, it is still accessed by integer-index)
+        # Then, in order to avoid having NaN in any of the results, the value that is extracted from 'fields'
+        # is checked for NaN (and if it is Nan it is converted to an empty string instead
+        # by the __check_for_nan method.)
+        affe.set_name_friendly(self.__check_for_nan(fields[self.__rowtuple_loc('CHIMP')]))
+        affe.set_story(self.__check_for_nan(fields[self.__rowtuple_loc('description')]))
+        affe.set_image(self.__check_for_nan(fields[self.__rowtuple_loc('image')]))
+        affe.set_website(self.__check_for_nan(fields[self.__rowtuple_loc('external_link')]))
 
         self.__add_common_attributes_to_affe_obj(affe, fields)
         self.__add_common_emotions_to_affe_obj(affe, fields)
@@ -223,4 +217,19 @@ class AffeDataManipulator:
             str_to_return = self.df_affen.columns.get_loc(column_name) + 1
 
         return str_to_return
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def __check_for_nan(self, a_variable: Union[str|int|float]) -> Union[str|int|float]:
+        """
+        If a value passed is NaN (likely extracted from a pandas dataframe) then
+        this function will return an empty string instead.
+        :param a_variable: the variable containing the value in question.
+        :return: the same a_variable UNLESS it is NaN, in which case return the empty string.
+        """
+        var_type = type(a_variable)
+        if (var_type is float) or (var_type is int):
+            if isnan(a_variable):
+                return ""
+        else:
+            return a_variable
     # ------------------------ END FUNCTION ------------------------ #

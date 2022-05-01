@@ -75,16 +75,25 @@ class Affe:
         self.attributes_rare_numerical[attribute_name] = attribute_value
     # ------------------------ END FUNCTION ------------------------ #
 
-    def dump_to_json(self, full_path_to_output_directory: Path, pretty: bool = True) -> dict:
+    def dump_to_json(self, full_path_to_output_directory: Path, style: str, pretty: bool = True) -> dict:
         """
-        A method to dump to disk the object represented by this class instance, fairly literally
-        (ie. without almost any processing/manipulation.)
+        A method to dump to disk the object
         :param full_path_to_output_directory: The directory to save the object to. The filename will
           be based on the ID of the Affe.
+        :param style: Acceptable values are 'normal' and 'nft-style'.
+          - 'normal' will dump to disc a json file that represents an instance of this class instance, fairly
+            literally - not much processing/manipulation. Each self.variable of the class is dumped 'as is' to
+            the dictionary/json.
+          - 'nft-style' will organize and rename the fields slightly so that places like OpenSea will 'understand'
+            the metadata. Eg. 'story' will be renamed to 'description' in the json output.
         :param pretty: Whether the json should be indented or not
         :return: The dictionary that was used to dump the object to json format.
         """
-        dict_to_dump = self.make_dict()
+        dict_to_dump = {}
+        if style == 'normal':
+            dict_to_dump = self.make_dict()
+        if style == 'nft-style':
+            dict_to_dump = self.make_dict_nft_style()
 
         full_path_to_json_file = full_path_to_output_directory / (str(self.id) + '.json')
         kwargs = {}
@@ -93,17 +102,6 @@ class Affe:
         with open(full_path_to_json_file, mode='w') as f:
             json.dump(dict_to_dump, f, **kwargs)
         return dict_to_dump
-    # ------------------------ END FUNCTION ------------------------ #
-
-    def dump_to_opensea_style_json(self, full_path: Path, pretty: bool = True):
-        """
-        A method to dump to disk the object represented by this class instance, in following the
-        opensea metadata standards.
-        :param full_path_to_output_directory: The directory to save the object to. The filename will
-          be based on the ID of the Affe.
-        :param pretty: Whether the json should be indented or not
-        """
-        pass
     # ------------------------ END FUNCTION ------------------------ #
 
     def make_dict(self) -> dict:
@@ -116,5 +114,58 @@ class Affe:
         for item in self.list_of_elements:
             element_name = item.replace('self.', '')
             dict_to_return[element_name] = eval(item)
+        return dict_to_return
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def make_dict_nft_style(self) -> dict:
+        """
+        A method to 'convert' the instance of the class into a dictionary that can be dumped as json which
+        generally adheres to metadata/opensea standards.
+        :return: A dictionary representing an Affe.
+        """
+        dict_to_return = {}
+        list_of_attributes = []
+
+        # The loops below build the list of attributes
+
+        for item in self.attributes_common:
+            dict_attrib_to_add = {
+                'trait_type': item,
+                'value': self.attributes_common[item]
+            }
+            list_of_attributes.append(dict_attrib_to_add)
+
+        for item in self.attributes_rare_textual:
+            dict_attrib_to_add = {
+                'trait_type': item,
+                'value': self.attributes_rare_textual[item]
+            }
+            list_of_attributes.append(dict_attrib_to_add)
+
+        for item in self.emotions_common:
+            dict_attrib_to_add = {
+                'display_type': 'number',
+                'trait_type': item,
+                'value': self.emotions_common[item],
+                'max_value': 5
+            }
+            list_of_attributes.append(dict_attrib_to_add)
+
+        for item in self.attributes_rare_numerical:
+            dict_attrib_to_add = {
+                'display_type': 'number',
+                'trait_type': item,
+                'value': self.attributes_rare_numerical[item],
+                'max_value': 5
+            }
+            list_of_attributes.append(dict_attrib_to_add)
+
+        # Now all the pieces are ready to compile the metadata
+        dict_to_return['name'] = self.name_strict
+        dict_to_return['description'] = self.story
+        dict_to_return['image'] = self.image_url
+        dict_to_return['external_url'] = self.website
+        dict_to_return['attributes'] = list_of_attributes
+
         return dict_to_return
     # ------------------------ END FUNCTION ------------------------ #

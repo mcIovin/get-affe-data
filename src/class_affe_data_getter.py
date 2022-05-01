@@ -7,36 +7,42 @@ from class_api_interactions_moralis import MoralisAPIinteractions
 from class_selenium_opensea import SeleniumOnOpensea
 
 
-class AffeDataOrchestrator:
+class AffeDataGetter:
     """This class orchestrates the extraction of Affe data ."""
 
     def __init__(self, contract_address_with_affe_data, full_path_to_data_dir: Path):
         """
-        Initialize the AffeDataOrchestrator class.
+        Initialize the AffeDataGetter class.
         Args:
             full_path_to_data_dir: Path to a directory where this class will output
               intermediate working files, and final output files to. The directory
               should already exist.
         """
+
         self.affe_contract_address = contract_address_with_affe_data
-        self.fullpath_intermediate_files = full_path_to_data_dir / 'intermediate_files'
-        self.fullpath_eoa_nft_transfers = self.fullpath_intermediate_files / 'xlii_transactions.csv'
-        self.fullpath_nfts_data = self.fullpath_intermediate_files / 'nfts.csv'
-        self.fullpath_nfts_refined_data = self.fullpath_intermediate_files / 'nfts_refined.csv'
-        self.fullpath_nfts_extra_data = self.fullpath_intermediate_files / 'nfts_extra_data.csv'
-        self.fullpath_combined_nft_data = self.fullpath_intermediate_files / 'combined_data.csv'
-        self.fullpath_output = full_path_to_data_dir / 'output'
-        self.fullpath_final = self.fullpath_output / 'affe.csv'
+
         # This class will store some files on disk in two directories called
         # 'intermediate_files' and 'output', so we'll check to see if they exist,
         # and if not they will be created.
-        if not exists(self.fullpath_intermediate_files):
-            mkdir(self.fullpath_intermediate_files)
-        if not exists(self.fullpath_output):
-            mkdir(self.fullpath_output)
+        self.fullpath_dir_intermediate_files = full_path_to_data_dir / 'intermediate_files'
+        self.fullpath_dir_output = full_path_to_data_dir / 'output'
+        if not exists(self.fullpath_dir_intermediate_files):
+            mkdir(self.fullpath_dir_intermediate_files)
+        if not exists(self.fullpath_dir_output):
+            mkdir(self.fullpath_dir_output)
+
+        # Intermediate files
+        self.fullpath_eoa_nft_transfers = self.fullpath_dir_intermediate_files / 'xlii_transactions.csv'
+        self.fullpath_nfts_data = self.fullpath_dir_intermediate_files / 'nfts.csv'
+        self.fullpath_nfts_refined_data = self.fullpath_dir_intermediate_files / 'nfts_refined.csv'
+        self.fullpath_nfts_extra_data = self.fullpath_dir_intermediate_files / 'nfts_extra_data.csv'
+        self.fullpath_combined_nft_data = self.fullpath_dir_intermediate_files / 'combined_data.csv'
+
+        # Finished product files
+        self.fullpath_final = self.fullpath_dir_output / 'affe.csv'
     # ------------------------ END FUNCTION ------------------------ #
 
-    def build_affen_data_file(self,
+    def build_affen_data_files(self,
                               output_format: str ="csv",
                               request_moralis_metadata_resync: bool = False):
         """
@@ -306,4 +312,16 @@ class AffeDataOrchestrator:
         pd.set_option("display.width", 1000)
         pd.set_option("display.max_rows", 250)
         print((df.iloc[:, : 14]).head(250))
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def load_previously_fetched_data(self) -> pd.DataFrame:
+        """
+        This method attempts to load from disk a set of 'finalized' (retrieved, filtered, cleaned, etc.)
+        Affen data..
+        :return: A pandas dataframe with the data somewhat reorganized.
+        """
+        df = pd.DataFrame
+        if  exists(self.fullpath_final):
+            df = pd.read_csv(self.fullpath_final)
+        return df
     # ------------------------ END FUNCTION ------------------------ #

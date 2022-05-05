@@ -1,7 +1,8 @@
-.idea/
-__pycache__/
-external_code
-test.py
 *.env
+external_code
 geckodriver.log
 src/get_affe_data_for_TESTING.py
+test.py
+.idea/
+__pycache__/
+data/

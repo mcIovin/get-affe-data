@@ -12,5 +12,15 @@ print_a_message "-- STARTING ENTRYPOINT ACTIONS --"
 # which is useful for seeing the ganache output on the console
 # where the container was started.)
 
-python3.9 src/get_affe_data.py
-#tail -f /dev/null  > /app/null.log
+source ~/miniconda3/bin/activate
+conda activate conda_env_3_10
+python --version
+python src/get_affe_data.py
+
+# NOTE: The commands above can be commented-out, and the commands below
+# uncommented in order to run the container in a way that won't terminate
+# immediately (so it can be interacted with.) In this case, once the container
+# starts, the commands above should be run manually inside the container if
+# one wants to run the program.
+#touch /app/log.txt
+#tail -f /dev/null  > /app/log.txt

@@ -20,18 +20,36 @@ RUN add-apt-repository -y ppa:mozillateam/ppa
 RUN apt update
 RUN apt install -y firefox
 
-# Install python
-RUN apt install -y python3.9
-RUN apt install -y python3-pip
+# Install python via miniconda
+RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+RUN chmod +x Miniconda3-latest-Linux-x86_64.sh
+RUN ./Miniconda3-latest-Linux-x86_64.sh -b
+# You can't do something like: RUN source venv/bin/activate in a Dockerfile
+# So below I specify /bin/bash -c and then run all the commands I need together
+# after the 'source'. There is a probably a cleaner, more Docker-esque way to
+# do this, but I'm not sure how at the moment.
+RUN /bin/bash -c "source ~/miniconda3/bin/activate \
+               && conda create -y --name conda_env_3_10 python=3.10 \
+               && conda deactivate"
 
 RUN apt autoremove -y --purge
 
 WORKDIR /app
 
-# Install all the requirements for the python code to run
+# Install all the requirements for the python code to run (and first upgrage pip)
 COPY requirements.txt /app
-RUN python3.9 -m pip install --upgrade pip
-RUN python3.9 -m pip install -r requirements.txt
+RUN /bin/bash -c "source ~/miniconda3/bin/activate \
+               && conda activate conda_env_3_10 \
+               && python -m pip install --upgrade pip \
+               && pip install -r requirements.txt \
+               && conda deactivate"
+# Show some info about the conda virtual environment
+RUN /bin/bash -c "source ~/miniconda3/bin/activate \
+               && conda activate conda_env_3_10 \
+               && conda  info \
+               && conda  info --envs \
+               && python --version \
+               && conda deactivate"
 
 # install geckodriver
 RUN mkdir drivers

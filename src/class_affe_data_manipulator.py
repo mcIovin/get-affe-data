@@ -55,6 +55,7 @@ class AffeDataManipulator:
         :return:
         """
         list_with_all_affen_normal = []
+        dict_with_all_affen_normal = {}
         list_with_all_affen_opensea_style = []
         fullpath_dir_normal_json = Path
         fullpath_dir_opensea_json = Path
@@ -70,10 +71,14 @@ class AffeDataManipulator:
                 # that was used to generate the json, which we then append to the running tally of Affen
                 the_ape_as_dict = affe.dump_to_json(fullpath_dir_normal_json, 'normal', pretty)
                 list_with_all_affen_normal.append(the_ape_as_dict)
+                dict_with_all_affen_normal[affe.id] = the_ape_as_dict
             # Dump the whole list to a single file as well
-            full_path_to_collection_file = fullpath_dir_normal_json / '00_all_affen.json'
-            with open(full_path_to_collection_file, mode='w') as f:
+            full_path_to_collection_file_as_list = fullpath_dir_normal_json / '00_all_affen_list.json'
+            full_path_to_collection_file_as_dict = fullpath_dir_normal_json / '00_all_affen_dict.json'
+            with open(full_path_to_collection_file_as_list, mode='w') as f:
                 json.dump(list_with_all_affen_normal, f, indent=2)
+            with open(full_path_to_collection_file_as_dict, mode='w') as f:
+                json.dump(dict_with_all_affen_normal, f, indent=2)
 
         if opensea_style_json:
             for row in self.df_affen.itertuples():
@@ -91,7 +96,44 @@ class AffeDataManipulator:
                 json.dump(list_with_all_affen_opensea_style, f, indent=2)
     # ------------------------ END FUNCTION ------------------------ #
 
-    def __convert_df_row_to_affe_object(self, df_rowtuple):
+    @staticmethod
+    def make_set_of_affe_with_possibly_incomplete_data(fullpath_to_a_file_with_all_affen_as_dict: Path) -> set:
+        """
+        This method tries to make an educated guess of what Affe might be missing data. This can be used
+        to, for example, re-request data only for those Affen from APIs, rather than trying to get data for
+        the entire list again.
+        :param fullpath_to_a_file_with_all_affen_as_dict: A json file with data about all the Affe where the top
+          level structure is a dictionary (not a list), with each key being the id of each Affe
+          (eg. '1' or '2' or '3' etc.), and each value is Affe data as dumped to json using the Affe class in
+          'normal' style (as opposed to 'nft-style'.)
+        :return: A set where each item in the set is the opensea token_id of an Affe that we may not have
+          all the data for.
+        """
+        set_of_affen_that_might_be_missing_data = set()
+        with open(fullpath_to_a_file_with_all_affen_as_dict, mode='r') as f:
+            all_affen_dict = json.load(f)
+
+        for affe_number in all_affen_dict:
+            affe = Affe(affe_number)
+            affe.load_from_dict(all_affen_dict[affe_number])
+            if not affe.website:
+                logging.info(f"Affe #{affe.id} does not have a website.")
+                set_of_affen_that_might_be_missing_data.add(affe.opensea_id)
+            # We could potentially use 'continue' keyword at this point, but it may be useful
+            # to keep executing the loop in order to 'log' all the data potentially missing for
+            # a chimp
+            if not affe.image_url:
+                logging.info(f"Affe #{affe.id} does not have an image.")
+                set_of_affen_that_might_be_missing_data.add(affe.opensea_id)
+            if not (affe.emotions_common or affe.attributes_rare_textual or affe.attributes_rare_numerical):
+                logging.info(f"Affe #{affe.id} is missing all of: emotions_common, attributes_rare_textual, "
+                             f"attributes_rare_numerical.")
+                set_of_affen_that_might_be_missing_data.add(affe.opensea_id)
+
+        print(set_of_affen_that_might_be_missing_data)
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def __convert_df_row_to_affe_object(self, df_rowtuple) -> Affe:
         """
         Convert a pandas row to an individual Affe object.
         :param df_rowtuple: This is the type of object that pandas uses when using the pandas
@@ -115,6 +157,7 @@ class AffeDataManipulator:
         affe.set_story(self.__check_for_nan(fields[self.__rowtuple_loc('description')]))
         affe.set_image(self.__check_for_nan(fields[self.__rowtuple_loc('image')]))
         affe.set_website(self.__check_for_nan(fields[self.__rowtuple_loc('external_link')]))
+        affe.set_opensea_id(self.__check_for_nan(fields[self.__rowtuple_loc('token_id')]))
 
         self.__add_common_attributes_to_affe_obj(affe, fields)
         self.__add_common_emotions_to_affe_obj(affe, fields)

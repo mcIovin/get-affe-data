@@ -2,7 +2,7 @@
 external_code
 geckodriver.log
 src/get_affe_data_for_TESTING.py
-test.py
+src/test.py
 .idea/
 __pycache__/
 data/

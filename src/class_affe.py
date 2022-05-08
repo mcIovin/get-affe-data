@@ -23,6 +23,7 @@ class Affe:
         self.attributes_rare_numerical = {}
         self.image_url = ""
         self.website = ""
+        self.opensea_id = ""
         # the list below CAN be auto-computed in code with dir() and (not) callable() and getattr(),
         # but the result is sorted alphabetically, so I prefer to keep a list here that tracks the
         # elements of the class in order of preference.
@@ -35,7 +36,8 @@ class Affe:
                                  'self.attributes_rare_textual',
                                  'self.attributes_rare_numerical',
                                  'self.image_url',
-                                 'self.website'
+                                 'self.website',
+                                 'self.opensea_id'
                                  ]
     # ------------------------ END FUNCTION ------------------------ #
 
@@ -57,6 +59,10 @@ class Affe:
 
     def set_website(self, url: str):
         self.website = url
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def set_opensea_id(self, opensea_id: str):
+        self.opensea_id = opensea_id
     # ------------------------ END FUNCTION ------------------------ #
 
     def add_common_attribute(self, attribute_name: str, attribute_value: str):
@@ -115,6 +121,17 @@ class Affe:
             element_name = item.replace('self.', '')
             dict_to_return[element_name] = eval(item)
         return dict_to_return
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def load_from_dict(self, affe_dict):
+        """
+        A method to 'convert' a dict into an Affe object.
+        :return: A dictionary representing an Affe.
+        """
+        for item in self.list_of_elements:
+            element_name = item.replace('self.', '')
+            if element_name in affe_dict:
+                setattr(self, element_name, affe_dict[element_name])
     # ------------------------ END FUNCTION ------------------------ #
 
     def make_dict_nft_style(self) -> dict:

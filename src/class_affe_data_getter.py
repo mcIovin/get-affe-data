@@ -354,10 +354,20 @@ class AffeDataGetter:
         if not df.empty:
             counter = 0
             for col_name in list_with_ordered_column_names:
-                col = df[col_name]
-                df.drop(columns=[col_name], inplace=True)
-                df.insert(loc=counter, column=col_name, value=col)
-                counter += 1
+                # I believe the metadata on OpenSea storefront can be modified. I've run into
+                # a situation where some columns I expected to find are no longer there (and
+                # I'm guessing that's because these were attributes that at some point were given
+                # to a token, but later removed. This made the code crash at this point. So
+                # now here, for safety, I'll check if the column name is in the 'df', and if
+                # it isn't, I won't execute the code, but rather issue a warning.
+                if col_name in df.columns:
+                    col = df[col_name]
+                    df.drop(columns=[col_name], inplace=True)
+                    df.insert(loc=counter, column=col_name, value=col)
+                    counter += 1
+                else:
+                    logging.warning(f"While re-ordering columns, expected to find a column named '{col_name}', but "
+                                    f"it was not present in the data.")
 
         df.to_csv(self.fullpath_final, index=False)
         return df

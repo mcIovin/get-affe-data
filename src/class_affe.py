@@ -75,6 +75,19 @@ class Affe:
         self.attributes_rare_numerical[attribute_name] = attribute_value
     # ------------------------ END FUNCTION ------------------------ #
 
+    def perform_721_hygene(self):
+        """
+        This method takes an affen object and makes sure its data is in
+        the form we want it to be for the 721 contract, rather than the form
+        it exists as in the 1155 Storefront contract. For example, we may
+        to store the 'name' as the Chimp's name rather than the number, and
+        the number as an attribute. This function would take care of such
+        :return:
+        """
+        self.name_strict = self.name_friendly
+        self.add_common_attribute("Birth Order", f"Affe mit Waffe #{str(self.id)}")
+    # ------------------------ END FUNCTION ------------------------ #
+
     def dump_to_json(self, full_path_to_output_directory: Path, style: str, pretty: bool = True) -> dict:
         """
         A method to dump to disk the object

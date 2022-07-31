@@ -26,8 +26,8 @@ class AffeDataManipulator:
                                             'Negative', 'Positive', 'Sadness', 'Surprise', 'Trust', 'description',
                                             'Anticipatioin', 'token_address', 'block_number_minted', 'owner_of',
                                             'block_number', 'token_hash', 'amount', 'contract_type', 'symbol',
-                                            'token_uri', 'metadata', 'synced_at', 'image', 'external_link',
-                                            'animation_url']
+                                            'token_uri', 'metadata', 'last_token_uri_sync', 'last_metadata_sync',
+                                            'image', 'external_link', 'animation_url']
 
     def __init__(self, affen_data: pd.DataFrame, full_path_to_data_dir: Path):
         """
@@ -45,7 +45,9 @@ class AffeDataManipulator:
             mkdir(self.fullpath_dir_output)
     # ------------------------ END FUNCTION ------------------------ #
 
-    def dump_all_to_json(self, normal_json: bool = True, opensea_style_json: bool = True, pretty: bool = True):
+    def dump_all_to_json(self, normal_json: bool = True,
+                         opensea_style_json: bool = True,
+                         pretty: bool = True):
         """
         Method to dump to disk Affen data in json format.
         :param normal_json: Each Affe object, in a json representation very similar to how each Affe
@@ -61,11 +63,11 @@ class AffeDataManipulator:
         kwargs = ({'indent': 2} if pretty else {})
 
         if normal_json:
+            fullpath_dir_normal_json = self.fullpath_dir_output / 'normal_json'
+            if not exists(fullpath_dir_normal_json):
+                mkdir(fullpath_dir_normal_json)
             for row in self.df_affen.itertuples():
                 affe = self.__convert_df_row_to_affe_object(row)
-                fullpath_dir_normal_json = self.fullpath_dir_output / 'normal_json'
-                if not exists(fullpath_dir_normal_json):
-                    mkdir(fullpath_dir_normal_json)
                 # In the line below, the method dumps the json to disk, but also returns the dictionary
                 # that was used to generate the json, which we then append to the running tally of Affen
                 the_ape_as_dict = affe.dump_to_json(fullpath_dir_normal_json, 'normal', pretty)
@@ -73,14 +75,19 @@ class AffeDataManipulator:
             # Dump the whole list to a single file as well
             full_path_to_collection_file = fullpath_dir_normal_json / '00_all_affen.json'
             with open(full_path_to_collection_file, mode='w') as f:
-                json.dump(list_with_all_affen_normal, f, indent=2)
+                json.dump(list_with_all_affen_normal, f, **kwargs)
 
         if opensea_style_json:
+            fullpath_dir_opensea_json = self.fullpath_dir_output / 'opensea_style_json'
+            if not exists(fullpath_dir_opensea_json):
+                mkdir(fullpath_dir_opensea_json)
             for row in self.df_affen.itertuples():
                 affe = self.__convert_df_row_to_affe_object(row)
-                fullpath_dir_opensea_json = self.fullpath_dir_output / 'opensea_style_json'
-                if not exists(fullpath_dir_opensea_json):
-                    mkdir(fullpath_dir_opensea_json)
+                # The row below changes some of the metadata from the way it exists in
+                # the OpenSea 1155 Storefront contract into the way we want it to be in
+                # the 721 contract.
+                affe.perform_721_hygene()
+
                 # In the line below, the method dumps the json to disk, but also returns the dictionary
                 # that was used to generate the json, which we then append to the running tally of Affen
                 the_ape_as_dict = affe.dump_to_json(fullpath_dir_opensea_json, 'nft-style', pretty)
@@ -88,7 +95,7 @@ class AffeDataManipulator:
             # Dump the whole list to a single file as well
             full_path_to_collection_file = fullpath_dir_opensea_json / '00_all_affen_nft_style.json'
             with open(full_path_to_collection_file, mode='w') as f:
-                json.dump(list_with_all_affen_opensea_style, f, indent=2)
+                json.dump(list_with_all_affen_opensea_style, f, **kwargs)
     # ------------------------ END FUNCTION ------------------------ #
 
     def __convert_df_row_to_affe_object(self, df_rowtuple):

@@ -4,7 +4,9 @@ from os.path import exists
 import pandas as pd
 from pathlib import Path
 from class_api_interactions_moralis import MoralisAPIinteractions
+from class_api_interactions_opensea import OpenseaAPIinteractions
 from class_selenium_opensea import SeleniumOnOpensea
+from helper_functions import get_last_segment_of_url
 
 
 class AffeDataGetter:
@@ -21,25 +23,33 @@ class AffeDataGetter:
 
         self.affe_contract_address = contract_address_with_affe_data
 
-        # This class will store some files on disk in two directories called
-        # 'intermediate_files' and 'output', so we'll check to see if they exist,
+        # This class will store some files on disk in three directories called
+        # 'intermediate_files', 'manual_files', and 'output', so we'll check to see if they exist,
         # and if not they will be created.
         self.fullpath_dir_intermediate_files = full_path_to_data_dir / 'intermediate_files'
+        self.fullpath_dir_manual_files = full_path_to_data_dir / 'manual_files'
         self.fullpath_dir_output = full_path_to_data_dir / 'output'
         if not exists(self.fullpath_dir_intermediate_files):
             mkdir(self.fullpath_dir_intermediate_files)
+        if not exists(self.fullpath_dir_manual_files):
+            mkdir(self.fullpath_dir_manual_files)
         if not exists(self.fullpath_dir_output):
             mkdir(self.fullpath_dir_output)
 
         # Intermediate files
         self.fullpath_eoa_nft_transfers = self.fullpath_dir_intermediate_files / 'xlii_transactions.csv'
         self.fullpath_nfts_data = self.fullpath_dir_intermediate_files / 'nfts.csv'
+        self.fullpath_nfts_including_manual_additions = self.fullpath_dir_intermediate_files / 'nfts_manual_os_additions.csv'
         self.fullpath_nfts_refined_data = self.fullpath_dir_intermediate_files / 'nfts_refined.csv'
         self.fullpath_nfts_extra_data = self.fullpath_dir_intermediate_files / 'nfts_extra_data.csv'
         self.fullpath_combined_nft_data = self.fullpath_dir_intermediate_files / 'combined_data.csv'
 
+        # Manually augmented files
+        self.fullpath_additional_opensea_urls = self.fullpath_dir_manual_files / 'additional_opensea_urls.csv'
+
         # Finished product files
         self.fullpath_final = self.fullpath_dir_output / 'affe.csv'
+
     # ------------------------ END FUNCTION ------------------------ #
 
     def build_affen_data_files(self,
@@ -78,8 +88,15 @@ class AffeDataGetter:
         # if one is only using data from disk. So the code below is only run when the data being
         # used is NOT from disk.
         if not use_data_already_on_disk:
-            logging.info("---------- GETTING NFT METADATA FROM TOKEN URIs ----------")
+            logging.info("---------- GETTING NFT METADATA FROM ON-CHAIN TOKEN URIs ----------")
             df_nfts = self.get_nft_metadata_from_moralis(df_transfers)
+
+        # By definition, it doesn't make sense to fetch nft data from OpenSea
+        # if one is only using data from disk. So the code below is only run when the data being
+        # used is NOT from disk.
+        if not use_data_already_on_disk:
+            logging.info("---------- GETTING NFT METADATA FROM OFF-CHAIN TOKEN URIs ----------")
+            df_nfts_with_manual_os_additions = self.augment_nft_list_using_opensea(df_nfts)
 
         logging.info("---------- REFINING NFT METADATA ----------")
         # Below, if we are only going to refine data on disk, we only need to pass one parameter
@@ -87,7 +104,7 @@ class AffeDataGetter:
         # want to use data passed as a parameter) we need to add the other parameter as well.
         kwargs = {'use_data_already_on_disk': use_data_already_on_disk}
         if not use_data_already_on_disk:
-            kwargs['df_with_nft_data'] = df_nfts
+            kwargs['df_with_nft_data'] = df_nfts_with_manual_os_additions
         df_refined_nfts = self.refine_nft_data(**kwargs)
 
         # By definition, it doesn't make sense to scrape nft data from OpenSea
@@ -181,7 +198,7 @@ class AffeDataGetter:
     def get_nft_metadata_from_moralis(self,
                                       df_with_nft_transfers: pd.DataFrame = pd.DataFrame) -> pd.DataFrame:
         """
-        This method starts information about NFT transactions that the creator of the Affe
+        This method by examining information about NFT transactions that the creator of the Affe
         has sent, and grabs the metadata about each token using the Moralis API.
         :param df_with_nft_transfers: The information about the NFT transfers can be passed
           directly to this method in this parameter. If this parameter is not provided, this
@@ -209,6 +226,79 @@ class AffeDataGetter:
 
         df_tokens.to_csv(self.fullpath_nfts_data, index=False)
         return df_tokens
+
+    # ------------------------ END FUNCTION ------------------------ #
+
+    def augment_nft_list_using_opensea(self,
+                                       df_with_nft_data: pd.DataFrame) -> pd.DataFrame:
+        """
+        This tries to find on disk a list of OpenSea URLs representing Affen that have
+        been created in the 1155 Storefront contract, but that have not yet been sold/transferred
+        thereby not incurring any on-chain transactions yet. Using this list of URLs,
+        it grabs the metadata about each token from the OpenSea tokenURI.
+        :param df_with_nft_data: A dataframe with the information about NFTs gathered so far. This
+          is used to ensure this method doesn't duplicate work that has already been done.
+        :return: A dataframe with nft metadata fetched from OpenSea's tokenURI.
+        """
+
+        if df_with_nft_data.empty:
+            logging.warning("Expected to receive data from upstream functions, but instead"
+                            " received an empty dataframe.")
+        else:
+            # Up to this point (July, 2022) we have only been getting information for Affen that have
+            # data on the blockchain. The problem with this is that quite a few Affen are in
+            # OpenSea's offchain storefront data (any Affen that is created, but not yet
+            # sold ends up in this limbo where it exists in OpenSea, but not yet on the
+            # blockchain.) We could query this data form OpenSea directly if we had an
+            # OpenSea API key, but the process for getting one of them is cumbersome and
+            # requires their approval, so for now, for this small collection, we'll keep a
+            # manually updated list of URLs of apes that exist in OpenSea, but have not
+            # yet had an on-chain transaction.
+            # So, if a file exists, at a pre-defined location on disk, with additional OpenSea
+            # URLs, we'll add them to set of IDs that OpenSea will be scraped for.
+            if exists(self.fullpath_additional_opensea_urls):
+                df_os_urls = pd.read_csv(self.fullpath_additional_opensea_urls)
+                # below we apply a function (which extracts the ID from the end of a URL)
+                # to every URL (every 'row') in the column of the dataframe, AND we
+                # cast the resulting items to a set.
+                set_additional_ids = set(df_os_urls['opensea_url'].apply(get_last_segment_of_url))
+
+                set_existing_ids = set(df_with_nft_data['token_id'])
+
+                # now we remove from the set of additional IDs any IDs that may have already
+                # been 'discovered' by upstream functions. This might happen if the list stored
+                # on disk of OpenSea URLs has the ID of an ape that had previously not been
+                # transferred, but it was recently sold (thereby maybe the list on disk has not
+                # been updated yet, but an on-chain transaction now exists, so prior methods
+                # would have started to 'see' the NFT.)
+                set_ids = set_additional_ids - set_existing_ids
+
+                opensea = OpenseaAPIinteractions()
+
+                list_tokens = opensea.get_many_nft_tokens_metadata(self.affe_contract_address,
+                                                                   set_ids,
+                                                                   return_as='list')
+                # We now should have a list which contains dictionaries, where each dict represents
+                # data about one specific nft/token. Now we'll manipulate the data so it is fairly
+                # similar (in format) to the data gathered so far from Moralis, and then merge
+                # the data.
+                list_to_append = []
+                for item in list_tokens:
+                    dict_to_add = {}
+                    token_id = item.pop('token_id')
+                    dict_to_add['token_address'] = self.affe_contract_address
+                    dict_to_add['token_id'] = token_id
+                    dict_to_add['name'] = item['name']
+                    dict_to_add['metadata'] = str(item)
+                    dict_to_add['description'] = item['description']
+                    dict_to_add['image'] = item['image']
+                    dict_to_add['external_link'] = item['external_link']
+                    list_to_append.append(dict_to_add)
+
+                df_to_append = pd.DataFrame(list_to_append)
+                df_tokens = pd.concat([df_with_nft_data, df_to_append])
+                df_tokens.to_csv(self.fullpath_nfts_including_manual_additions, index=False)
+                return df_tokens
     # ------------------------ END FUNCTION ------------------------ #
 
     def refine_nft_data(self,
@@ -231,7 +321,7 @@ class AffeDataGetter:
         if not use_data_already_on_disk:  # we check for this case first as it is the default and more common
             df = df_with_nft_data
         else:
-            df = pd.read_csv(self.fullpath_nfts_data)
+            df = pd.read_csv(self.fullpath_nfts_including_manual_additions)
 
         if not df.empty:
             # the line below can be used to keep only rows that are NOT nan (ie. get rid of the rows
@@ -239,24 +329,30 @@ class AffeDataGetter:
             df_without_nans = df[df['metadata'].notna()]
 
             # keep only rows with a certain substring in the 'name' metadata field of the nft
-            substring = "affe mit"
+            substring1 = "affe mit"
             # In the line below, I believe the portion that says '.str.lower()' returns a Series (I think)
             # so one needs to use the '.str' portion on that AGAIN for the line to work
-            # (as opposed to just doing: .str.lower().startswith(substring)  -- without the second .str)
-            df_substring = df_without_nans[df_without_nans['name'].str.lower().str.startswith(substring)]
+            # (as opposed to just doing: .str.lower().startswith(substring1)  -- without the second .str)
+            df_substring1 = df_without_nans[df_without_nans['name'].str.lower().str.startswith(substring1)]
+            # we also need to check for another substring, because OpenSea caused a naming
+            # conflict, so now some of the Affen in the Storefront are simpling called 'Affe #'
+            # (instead of 'Affe mit Waffe #XXX)
+            substring2 = "Affe #"
+            df_substring2 = df_without_nans[df_without_nans['name'].str.startswith(substring2)]
 
             # at this point I hopefully have all the rows that have Affe mit Waffe in the metadata
             # HOWEVER, the moralis api is not returning metadata for all rows so I also need to keep the rows
             # with nans, because some of them are likely to be Affe
             df_nans = df[df['metadata'].isna()]
 
-            df_refined = pd.concat([df_substring, df_nans])
+            df_refined = pd.concat([df_substring1, df_substring2, df_nans])
 
         df_refined.to_csv(self.fullpath_nfts_refined_data, index=False)
         return df_refined
     # ------------------------ END FUNCTION ------------------------ #
 
-    def get_extra_metadata_from_opensea(self, df_with_refined_nft_data: pd.DataFrame = pd.DataFrame) -> pd.DataFrame:
+    def get_extra_metadata_from_opensea(self,
+                                        df_with_refined_nft_data: pd.DataFrame = pd.DataFrame) -> pd.DataFrame:
         """
         This method receives a dataframe that has info in it about NFTs, but up to this point
         that data only has the metadata that Opensea stores in the URI location. However, Opensea
@@ -327,6 +423,7 @@ class AffeDataGetter:
 
         df_combined.to_csv(self.fullpath_combined_nft_data, index=False)
         return df_combined
+
     # ------------------------ END FUNCTION ------------------------ #
 
     def reorganize_the_data(self,
@@ -371,6 +468,7 @@ class AffeDataGetter:
 
         df.to_csv(self.fullpath_final, index=False)
         return df
+
     # ------------------------ END FUNCTION ------------------------ #
 
     def show_data_on_console(self,
@@ -399,6 +497,7 @@ class AffeDataGetter:
             pd.set_option("display.width", 1000)
             pd.set_option("display.max_rows", 250)
             print((df.iloc[:, : 14]).head(250))
+
     # ------------------------ END FUNCTION ------------------------ #
 
     def load_previously_fetched_data(self) -> pd.DataFrame:
@@ -408,7 +507,7 @@ class AffeDataGetter:
         :return: A pandas dataframe with the data somewhat reorganized.
         """
         df = pd.DataFrame
-        if  exists(self.fullpath_final):
+        if exists(self.fullpath_final):
             df = pd.read_csv(self.fullpath_final)
         return df
     # ------------------------ END FUNCTION ------------------------ #

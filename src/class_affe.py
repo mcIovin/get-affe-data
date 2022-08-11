@@ -86,7 +86,8 @@ class Affe:
         """
         self.name_strict = self.name_friendly
         self.add_common_attribute("Birth Order", f"Affe mit Waffe #{str(self.id)}")
-        self.add_common_attribute("Has Matured", "No")
+        self.add_common_attribute("Eligible for Utility", "No")
+        self.add_common_attribute("Trusts in Humanity", "No")
     # ------------------------ END FUNCTION ------------------------ #
 
     def dump_to_json(self, full_path_to_output_directory: Path, style: str, pretty: bool = True) -> dict:

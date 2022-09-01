@@ -18,7 +18,7 @@ class AffeDataManipulator:
     fields_all_affen_emotions = ['Anger', 'Anticipation', 'Disgust', 'Fear', 'Joy',
                                  'Negative', 'Positive', 'Sadness', 'Surprise',  'Trust']
     # A list of columns that are not likely to represent valid Affen attributes of any sort
-    # OR are already included already in the lists above
+    # OR are already included in the lists above
     # NOTE that it looks like 'Anticipation' is listed twice, but this is due to a typo in the
     # source data (i.e. a column with the typo in the name DOES exist.)
     fields_to_ignore_as_affen_attributes = ['name', 'CHIMP', 'AK47', 'token_id',
@@ -27,7 +27,7 @@ class AffeDataManipulator:
                                             'Anticipatioin', 'token_address', 'block_number_minted', 'owner_of',
                                             'block_number', 'token_hash', 'amount', 'contract_type', 'symbol',
                                             'token_uri', 'metadata', 'last_token_uri_sync', 'last_metadata_sync',
-                                            'image', 'external_link', 'animation_url']
+                                            'image', 'external_link', 'animation_url', 'transfer_index']
 
     def __init__(self, affen_data: pd.DataFrame, full_path_to_data_dir: Path):
         """
@@ -47,6 +47,7 @@ class AffeDataManipulator:
 
     def dump_all_to_json(self, normal_json: bool = True,
                          opensea_style_json: bool = True,
+                         flat_json: bool = True,
                          pretty: bool = True):
         """
         Method to dump to disk Affen data in json format.
@@ -58,6 +59,7 @@ class AffeDataManipulator:
         """
         list_with_all_affen_normal = []
         list_with_all_affen_opensea_style = []
+        list_with_all_affen_flat = []
         fullpath_dir_normal_json = Path
         fullpath_dir_opensea_json = Path
         kwargs = ({'indent': 2} if pretty else {})
@@ -83,10 +85,11 @@ class AffeDataManipulator:
                 mkdir(fullpath_dir_opensea_json)
             for row in self.df_affen.itertuples():
                 affe = self.__convert_df_row_to_affe_object(row)
-                # The row below changes some of the metadata from the way it exists in
+                # The line below changes some of the metadata from the way it exists in
                 # the OpenSea 1155 Storefront contract into the way we want it to be in
                 # the 721 contract.
                 affe.perform_721_hygene()
+                affe.initialize_new_traits()
 
                 # In the line below, the method dumps the json to disk, but also returns the dictionary
                 # that was used to generate the json, which we then append to the running tally of Affen
@@ -96,6 +99,27 @@ class AffeDataManipulator:
             full_path_to_collection_file = fullpath_dir_opensea_json / '00_all_affen_nft_style.json'
             with open(full_path_to_collection_file, mode='w') as f:
                 json.dump(list_with_all_affen_opensea_style, f, **kwargs)
+
+        if flat_json:
+            fullpath_dir_flat_json = self.fullpath_dir_output / 'flat_json'
+            if not exists(fullpath_dir_flat_json):
+                mkdir(fullpath_dir_flat_json)
+            for row in self.df_affen.itertuples():
+                affe = self.__convert_df_row_to_affe_object(row)
+                # The line below changes some of the metadata from the way it exists in
+                # the OpenSea 1155 Storefront contract into the way we want it to be in
+                # the 721 contract.
+                affe.perform_721_hygene()
+                affe.initialize_new_traits()
+
+                # In the line below, the method dumps the json to disk, but also returns the dictionary
+                # that was used to generate the json, which we then append to the running tally of Affen
+                the_ape_as_dict = affe.dump_to_json(fullpath_dir_flat_json, 'flat', pretty)
+                list_with_all_affen_flat.append(the_ape_as_dict)
+            # Dump the whole list to a single file as well
+            full_path_to_collection_file = fullpath_dir_flat_json / '00_all_affen_flat.json'
+            with open(full_path_to_collection_file, mode='w') as f:
+                json.dump(list_with_all_affen_flat, f, **kwargs)
     # ------------------------ END FUNCTION ------------------------ #
 
     def __convert_df_row_to_affe_object(self, df_rowtuple):
@@ -105,27 +129,29 @@ class AffeDataManipulator:
           itertuples, and represents a row with data about an ape.
         :return: an Affe object
         """
-        fields = df_rowtuple
-        strict_name = fields[self.__rowtuple_loc('name')]
+        affe_data = df_rowtuple
+        strict_name = affe_data[self.__rowtuple_loc('name')]
         id = self.__extract_affe_number_from_strict_name(strict_name)
 
         affe = Affe(id)
         affe.set_name_strict(strict_name)
         # There is a lot going on in each line below, so lets break it down.
         # The __rowtuple_loc method returns the column number in which to look for the relevant value
-        # That integer is then passed as the index for the 'fields' list (although I don't think the
+        # That integer is then passed as the index for the 'affe_data' list (although I don't think the
         # object is striclty a list, it is still accessed by integer-index)
-        # Then, in order to avoid having NaN in any of the results, the value that is extracted from 'fields'
+        # Then, in order to avoid having NaN in any of the results, the value that is extracted from 'affe_data'
         # is checked for NaN (and if it is Nan it is converted to an empty string instead
         # by the __check_for_nan method.)
-        affe.set_name_friendly(self.__check_for_nan(fields[self.__rowtuple_loc('CHIMP')]))
-        affe.set_story(self.__check_for_nan(fields[self.__rowtuple_loc('description')]))
-        affe.set_image(self.__check_for_nan(fields[self.__rowtuple_loc('image')]))
-        affe.set_website(self.__check_for_nan(fields[self.__rowtuple_loc('external_link')]))
+        affe.set_name_friendly(self.__check_for_nan(affe_data[self.__rowtuple_loc('CHIMP')]))
+        affe.set_story(self.__check_for_nan(affe_data[self.__rowtuple_loc('description')]))
+        affe.set_image(self.__check_for_nan(affe_data[self.__rowtuple_loc('image')]))
+        affe.set_website(self.__check_for_nan(affe_data[self.__rowtuple_loc('external_link')]))
+        affe.set_animation(self.__check_for_nan(affe_data[self.__rowtuple_loc('animation_url')]))
+        affe.set_legacyid(self.__check_for_nan(affe_data[self.__rowtuple_loc('token_id')]))
 
-        self.__add_common_attributes_to_affe_obj(affe, fields)
-        self.__add_common_emotions_to_affe_obj(affe, fields)
-        self.__add_miscellaneous_attributes_to_affe_obj(affe, fields)
+        self.__add_common_attributes_to_affe_obj(affe, affe_data)
+        self.__add_common_emotions_to_affe_obj(affe, affe_data)
+        self.__add_miscellaneous_attributes_to_affe_obj(affe, affe_data)
 
         return affe
     # ------------------------ END FUNCTION ------------------------ #

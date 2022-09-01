@@ -66,7 +66,7 @@ class AffeDataGetter:
           downloaded data that is already on disk. This parameter can be used to specify this.
         """
 
-        # Declarations below are to avoid pycharm fro warning about possible use before declaration
+        # Declarations below are to avoid pycharm from warning about possible use before declaration
         df_transfers = pd.DataFrame
         df_nfts = pd.DataFrame
         # If this method was asked to process the data from disk, then the first method (below) is not
@@ -258,6 +258,7 @@ class AffeDataGetter:
             # URLs, we'll add them to set of IDs that OpenSea will be scraped for.
             if exists(self.fullpath_additional_opensea_urls):
                 df_os_urls = pd.read_csv(self.fullpath_additional_opensea_urls)
+
                 # below we apply a function (which extracts the ID from the end of a URL)
                 # to every URL (every 'row') in the column of the dataframe, AND we
                 # cast the resulting items to a set.
@@ -284,6 +285,10 @@ class AffeDataGetter:
                 # the data.
                 list_to_append = []
                 for item in list_tokens:
+
+                    if 'name' not in item:
+                        logging.warning("name missing...")
+
                     dict_to_add = {}
                     token_id = item.pop('token_id')
                     dict_to_add['token_address'] = self.affe_contract_address
@@ -374,9 +379,9 @@ class AffeDataGetter:
         df = df[df['token_address'] == self.affe_contract_address]
         set_token_ids = set(df['token_id'])
 
-        opensea = SeleniumOnOpensea()
+        opensea = SeleniumOnOpensea(self.affe_contract_address)
         opensea.start_driver()
-        df_extra_data = opensea.get_many_nfts_properties(self.affe_contract_address, set_token_ids)
+        df_extra_data = opensea.get_many_nfts_properties(set_token_ids)
         opensea.close_driver()
 
         df_extra_data.to_csv(self.fullpath_nfts_extra_data, index=False)

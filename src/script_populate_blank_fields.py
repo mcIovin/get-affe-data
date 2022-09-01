@@ -1,4 +1,3 @@
-import awswrangler as wr
 import pandas as pd
 import boto3
 from typing import Any, List, Mapping

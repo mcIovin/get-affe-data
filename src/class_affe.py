@@ -98,7 +98,7 @@ class Affe:
         :return:
         """
         self.name_strict = self.name_friendly
-        self.add_common_attribute("Birth Order", f"Affe mit Waffe #{str(self.id)}")
+        self.add_common_attribute("BIRTH ORDER", f"Affe mit Waffe #{str(self.id)}")
     # ------------------------ END FUNCTION ------------------------ #
 
     def initialize_new_traits(self):

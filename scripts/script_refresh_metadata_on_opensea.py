@@ -13,9 +13,11 @@ setup_logging(destination='both',
 if __name__ == "__main__":
     logging.info(" -------------------- STARTING MAIN PROGRAM -------------------- ")
     # Affe are in Opensea storefront at the following address
-    contract = "0xf77efd6810a8547543e7fcb1f6713f09e3a5df8e"  #GOERLI TEST ADDRESS
-    network = "goerli"
-    iterable_with_token_ids = range(1, 20)
+    #contract = "0xf77efd6810a8547543e7fcb1f6713f09e3a5df8e"  #GOERLI TEST ADDRESS
+    #network = "goerli"
+    contract = "0x732efbe05dabe70185c96a7efa3f12dd70d5703c"  #RINKEBY TEST ADDRESS
+    network = "rinkeby"
+    iterable_with_token_ids = range(1, 238)
 
     opensea = SeleniumOnOpensea(contract)
     opensea.start_driver()
